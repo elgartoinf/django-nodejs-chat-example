@@ -67,3 +67,18 @@ services:
     ports:
       - "5555:5555"
     command: /start-flower
+
+  node:
+    build:
+      context: .
+      dockerfile: ./compose/local/node/Dockerfile
+    image: chat_node_example_local_node
+    container_name: chat_node_example_local_node
+    depends_on:
+      - redis
+    volumes:
+      - ./node:/app:z
+      - /app/node_modules
+    command: npm run start
+    ports:
+      - "3000:3000"

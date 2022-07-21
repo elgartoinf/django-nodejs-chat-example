@@ -1,1 +1,93 @@
 {% extends "base.html" %}
+
+{% block content %}
+
+  <form id="chat-form">
+    {% csrf_token %}
+    <input type="text" name="room" required id="room">
+    <textarea name="message" cols="30" rows="10" required id="message"></textarea>
+    <input type="submit" value="enviar">
+  </form>
+
+  <div id="messages">
+
+  </div>
+{% endblock content %}
+
+
+{% block inline_javascript %}
+  <!-- importar socketio -->
+  <script src="http://localhost:3000/socket.io/socket.io.js"></script>
+  <script>
+    /* inicio socket.io */
+    var socket = io("http://localhost:3000");
+
+    function listenRoom(roomId) {
+      socket.on("room" + roomId, (data) => {
+        console.log(data)
+        console.log("llego nuevo mensaje")
+        //TODO: hacer append de la nueva data
+        loadMessages(roomId)
+      });
+    }
+
+
+    /* fin socket.io */
+
+
+    let chatForm = document.getElementById("chat-form");
+
+    chatForm.addEventListener("submit", function (event) {
+      event.preventDefault()
+      sendMessage({
+        "room": document.getElementById("room").value,
+        "message": document.getElementById("message").value
+      }, document.querySelector('[name=csrfmiddlewaretoken]').value)
+    });
+
+    let roomField = document.getElementById("room");
+    roomField.addEventListener("change", function () {
+      loadMessages(roomField.value)
+      listenRoom(roomField.value)
+    })
+
+    function loadMessages(roomId) {
+      fetch('/api/chat/?room=' + roomId, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+      }).then((response) => response.json())
+        .then((responseJSON) => {
+          console.log(responseJSON);
+          renderRoom(responseJSON)
+        });
+    }
+
+    function renderRoom(data) {
+      let messagesContainer = document.getElementById("messages")
+      let messagesResult = ""
+      data.forEach(function (entry) {
+        messagesResult += "<div>date:" + entry.date + "<br>author:" + entry.author_full_name + "<br>message:" + entry.message + "<br></div><hr>"
+      })
+      messagesContainer.innerHTML = messagesResult
+    }
+
+    function sendMessage(data, csrf) {
+      fetch('/api/chat/', {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': csrf,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+      }).then((response) => response.json())
+        .then((responseJSON) => {
+          //TODO: hacer un append en lugar de cargar todo
+          loadMessages(data.room)
+        });
+    }
+  </script>
+{% endblock inline_javascript %}
